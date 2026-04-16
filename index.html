@@ -98,6 +98,11 @@
           hideLoader();
         }
       });
+        if (window.top !== window.self) {
+            window.top.postMessage(event.data, '*');
+        }
+        // ----------------------------------
+      });
 
       iframe.addEventListener('load', function() {
         iframe.contentWindow.postMessage('bubbleContentLoadedRequest', '*');
