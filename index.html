@@ -38,7 +38,6 @@
     var iframe = document.getElementById('bubbleIframe');
     var loader = document.getElementById('loader');
     var primaryColor = '#A59D87';
-
     var svgCode = `
       <svg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 24 24'>
         <g>
@@ -54,56 +53,45 @@
       </svg>
     `;
     loader.style.backgroundImage = 'url(data:image/svg+xml,' + encodeURIComponent(svgCode) + ')';
-
     function getQueryParam(name) {
       return new URLSearchParams(window.location.search).get(name);
     }
-
     var productParam = getQueryParam('product');
     var iframeUrl = 'https://app.trybu.io/galian?lang=fr_fr';
     if (productParam) {
       iframeUrl += '&product=' + encodeURIComponent(productParam);
     }
     iframe.src = iframeUrl;
-
     function hideLoader() {
       loader.style.display = 'none';
     }
     setTimeout(hideLoader, 3000);
-
     iframe.addEventListener('load', function() {
-      try {
-        // Accéder au dataLayer de l'iframe Bubble
-        var iframeWindow = iframe.contentWindow;
-        var originalDataLayer = iframeWindow.dataLayer || [];
-        iframeWindow.dataLayer = originalDataLayer;
-
-        // Intercepter les futurs push sur le dataLayer de Bubble
-        var originalPush = Array.prototype.push;
-        iframeWindow.dataLayer.push = function() {
-          // Appeler le push original
-          originalPush.apply(this, arguments);
-          // Relayer chaque event vers le site client
-          for (var i = 0; i < arguments.length; i++) {
-            var eventData = arguments[i];
-            if (eventData && eventData.event) {
-              window.parent.postMessage({
-                type: 'gtm_event',
-                payload: eventData
-              }, '*');
-            }
-          }
-        };
-      } catch(e) {
-        console.warn('Impossible d\'accéder au dataLayer de l\'iframe:', e);
-      }
-
       iframe.contentWindow.postMessage('bubbleContentLoadedRequest', '*');
     });
-
+    // Écouter les messages provenant de Bubble
     window.addEventListener('message', function(event) {
       if (event.origin !== 'https://app.trybu.io') return;
-      if (event.data === 'bubbleContentLoaded') hideLoader();
+ 
+      if (event.data === 'bubbleContentLoaded') {
+        hideLoader();
+        return;
+      }
+ 
+      // Parser le message string JSON envoyé par Bubble via parent.postMessage
+      try {
+        var data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (data && data.event) {
+          if (window.parent !== window.self) {
+            window.parent.postMessage(JSON.stringify({
+              type: 'gtm_event',
+              payload: data
+            }), '*');
+          }
+        }
+      } catch(e) {
+        // message non JSON, ignorer
+      }
     });
   });
 </script>
