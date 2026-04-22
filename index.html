@@ -37,10 +37,8 @@
     window.addEventListener('load', function() {
       var iframe = document.getElementById('bubbleIframe');
       var loader = document.getElementById('loader');
-
       // Définir la couleur principale
       var primaryColor = '#A59D87';
-
       // Mettre à jour le SVG avec la couleur principale
       var svgCode = `
         <svg xmlns='http://www.w3.org/2000/svg' width='1em' height='1em' viewBox='0 0 24 24'>
@@ -56,55 +54,45 @@
           </g>
         </svg>
       `;
-
       // Convertir le SVG en URL de données
       var encodedSvg = encodeURIComponent(svgCode);
       var dataUrl = 'data:image/svg+xml,' + encodedSvg;
-
       // Appliquer l'URL de données comme arrière-plan
       loader.style.backgroundImage = 'url(' + dataUrl + ')';
-
       // Fonction pour extraire les paramètres de l'URL
       function getQueryParam(name) {
         var urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
       }
-
       // Récupérer le paramètre "product" de l'URL de la page
       var productParam = getQueryParam('product');
-
       // Construire l'URL de l'iframe en ajoutant le paramètre "product" si présent
       var iframeUrl = 'https://app.trybu.io/galian?lang=fr_fr';
       if (productParam) {
         iframeUrl += '&product=' + encodeURIComponent(productParam);
       }
-
       // Définir l'URL de l'iframe
       iframe.src = iframeUrl;
-
       function hideLoader() {
         loader.style.display = 'none';
       }
-
       // Masquer le loader après 3 secondes par sécurité
       setTimeout(hideLoader, 3000);
-
       // Écouter les messages provenant de l'iframe
       window.addEventListener('message', function(event) {
         if (event.origin !== 'https://app.trybu.io') {
           return;
         }
-
         if (event.data === 'bubbleContentLoaded') {
           hideLoader();
         }
-
-        // Relayer le message au parent si cette page est elle-même dans une iframe
-        if (window.top !== window.self) {
-          window.top.postMessage(event.data, '*');
+        // Relayer uniquement les events GTM structurés vers le site parent
+        if (event.data && event.data.type === 'gtm_event') {
+          if (window.parent !== window.self) {
+            window.parent.postMessage(event.data, '*');
+          }
         }
       });
-
       // Demander à l'iframe de signaler quand son contenu est chargé
       iframe.addEventListener('load', function() {
         iframe.contentWindow.postMessage('bubbleContentLoadedRequest', '*');
